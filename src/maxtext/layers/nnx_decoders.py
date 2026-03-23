@@ -351,12 +351,15 @@ class NNXDecoder(nnx.Module):
       else:
         layer_cls = decoder_block_classes[0]
 
+        cross_attention_layers_set = (
+            set(config.cross_attention_layers) if config.decoder_block == DecoderBlockType.MLLAMA else set()
+        )
         for lyr in range(config.num_decoder_layers):
           layer_kwargs = {}
           if config.decoder_block == DecoderBlockType.GEMMA3:
             layer_kwargs = {"attention_type": gemma3.get_attention_type(layer_id=lyr)}
           elif config.decoder_block == DecoderBlockType.MLLAMA:
-            layer_kwargs = {"use_cross_attention": lyr in set(self.config.cross_attention_layers)}
+            layer_kwargs = {"use_cross_attention": lyr in cross_attention_layers_set}
           elif config.decoder_block == DecoderBlockType.LLAMA4:
             layer_kwargs = {
                 "is_nope_layer": llama4.determine_is_nope_layer(lyr, self.config.nope_layer_interval),
