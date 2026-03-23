@@ -86,6 +86,11 @@ def get_image_offsets(config, processor_output: mm_utils.PreprocessorOutput | No
   elif model_name in ["qwen3-omni-30b-a3b"]:
     from maxtext.multimodal.processor_qwen3_omni import get_mm_offsets_qwen3_omni  # pylint: disable=import-outside-toplevel
 
+    if not hasattr(config, "model_name"):
+      raise ValueError(
+          "get_image_offsets for Qwen3-Omni requires a full config object with 'model_name' and "
+          "related settings; a bare model_name string is not supported."
+      )
     return get_mm_offsets_qwen3_omni(config, processor_output)
   else:
     return 0

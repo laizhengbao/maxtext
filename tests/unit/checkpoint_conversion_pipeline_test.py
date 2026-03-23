@@ -18,6 +18,9 @@ from unittest import mock
 from maxtext.checkpoint_conversion.standalone_scripts import convert_llama_mistral_pipeline
 
 
+_FAKE_EXPORT_SUPPORTED_MODELS = frozenset(["llama3.1-8b", "llama3.1-70b", "llama3.1-405b"])
+
+
 class CheckpointConversionPipelineTest(unittest.TestCase):
 
   @mock.patch("subprocess.run")
@@ -36,8 +39,12 @@ class CheckpointConversionPipelineTest(unittest.TestCase):
     self.assertIn("--huggingface-checkpoint", command)
     self.assertIn("false", command)
 
+  @mock.patch(
+      "maxtext.checkpoint_conversion.standalone_scripts.convert_llama_mistral_pipeline._get_export_supported_models",
+      return_value=_FAKE_EXPORT_SUPPORTED_MODELS,
+  )
   @mock.patch("subprocess.run")
-  def test_runs_hf_export_when_requested(self, mock_run):
+  def test_runs_hf_export_when_requested(self, mock_run, _mock_supported):
     convert_llama_mistral_pipeline.main([
         "--base-model-path=/tmp/meta-ckpt",
         "--maxtext-model-path=gs://bucket/maxtext/llama3.1-8b",
@@ -54,7 +61,11 @@ class CheckpointConversionPipelineTest(unittest.TestCase):
     self.assertIn("base_output_directory=/tmp/hf-export", export_command)
     self.assertIn("hf_access_token=test-token", export_command)
 
-  def test_rejects_unsupported_hf_export_model(self):
+  @mock.patch(
+      "maxtext.checkpoint_conversion.standalone_scripts.convert_llama_mistral_pipeline._get_export_supported_models",
+      return_value=_FAKE_EXPORT_SUPPORTED_MODELS,
+  )
+  def test_rejects_unsupported_hf_export_model(self, _mock_supported):
     with self.assertRaisesRegex(ValueError, "--hf-model-path"):
       convert_llama_mistral_pipeline.main([
           "--base-model-path=/tmp/meta-ckpt",
