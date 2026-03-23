@@ -1017,6 +1017,7 @@ class Decoder(nn.Module):
                 kv_caches[index] = kv_cache
             global_layer_idx_offset += num_layers
         else:
+          cross_attention_layers_set = set(cfg.cross_attention_layers) if cfg.decoder_block == DecoderBlockType.MLLAMA else set()
           for lyr in range(cfg.num_decoder_layers):
             RemattedBlockLayer = RemattedBlockLayers[0]
             layer_kwargs = {}
@@ -1026,7 +1027,7 @@ class Decoder(nn.Module):
               layer_kwargs = {"attention_type": gemma3.get_attention_type(layer_id=lyr)}
               layer_call_kwargs = {"bidirectional_mask": bidirectional_mask}
             if cfg.decoder_block == DecoderBlockType.MLLAMA:
-              layer_kwargs = {"use_cross_attention": lyr in set(self.config.cross_attention_layers)}
+              layer_kwargs = {"use_cross_attention": lyr in cross_attention_layers_set}
               layer_call_kwargs = {"cross_attention_states": cross_attention_states}
             if cfg.decoder_block == DecoderBlockType.LLAMA4:
               layer_kwargs = {
