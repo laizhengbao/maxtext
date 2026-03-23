@@ -28,12 +28,31 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from maxtext.utils.globals import HF_IDS, MAXTEXT_CONFIGS_DIR
+from maxtext.utils.globals import MAXTEXT_CONFIGS_DIR
 
 _MAXTEXT_CONVERTER_MODULE = "maxtext.checkpoint_conversion.standalone_scripts.llama_or_mistral_ckpt"
 _TO_HF_MODULE = "maxtext.checkpoint_conversion.to_huggingface"
-_EXPORT_SUPPORTED_MODELS = frozenset(model_name for model_name in HF_IDS if model_name != "default")
 _EXAMPLE_EXPORT_SUPPORTED_MODELS = ("llama3.1-8b", "llama3.1-70b", "llama3.1-405b", "mixtral-8x7b", "mixtral-8x22b")
+
+
+def _get_export_supported_models() -> frozenset:
+  """Return the set of model names supported by the HuggingFace exporter.
+
+  Derived from the intersection of PARAM_MAPPING, HF_SHAPE, and HOOK_FNS so
+  that only models the exporter can actually handle are accepted, rather than
+  every model that happens to have an HF repo ID registered.  Falls back to
+  the HF_IDS registry when the heavy conversion dependencies are not installed
+  (e.g. in lightweight test environments without JAX).
+  """
+  try:
+    from maxtext.checkpoint_conversion.utils.param_mapping import HOOK_FNS, PARAM_MAPPING  # pylint: disable=import-outside-toplevel
+    from maxtext.checkpoint_conversion.utils.hf_shape import HF_SHAPE  # pylint: disable=import-outside-toplevel
+
+    return frozenset(m for m in PARAM_MAPPING if m in HF_SHAPE and m in HOOK_FNS)
+  except ImportError:
+    from maxtext.utils.globals import HF_IDS  # pylint: disable=import-outside-toplevel
+
+    return frozenset(m for m in HF_IDS if m != "default")
 
 
 def _build_to_maxtext_command(args: argparse.Namespace) -> list[str]:
@@ -60,9 +79,10 @@ def _build_to_maxtext_command(args: argparse.Namespace) -> list[str]:
 
 
 def _build_to_huggingface_command(args: argparse.Namespace) -> list[str]:
-  if args.model_size not in _EXPORT_SUPPORTED_MODELS:
+  export_supported_models = _get_export_supported_models()
+  if args.model_size not in export_supported_models:
     supported_models = ", ".join(
-        sorted(model for model in _EXPORT_SUPPORTED_MODELS if model in _EXAMPLE_EXPORT_SUPPORTED_MODELS)
+        sorted(model for model in export_supported_models if model in _EXAMPLE_EXPORT_SUPPORTED_MODELS)
     )
     raise ValueError(
         "`--hf-model-path` is only supported for model sizes handled by "

@@ -175,7 +175,7 @@ class MllamaDecoderLayer(nnx.Module):
       attention_output, _ = self.cross_attention(
           hidden_states,
           cross_attention_states,
-          None,
+          decoder_positions,
           decoder_segment_ids=decoder_segment_ids,
           deterministic=deterministic,
           model_mode=model_mode,
