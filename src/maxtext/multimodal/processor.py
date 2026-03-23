@@ -88,8 +88,9 @@ def get_image_offsets(config, processor_output: mm_utils.PreprocessorOutput | No
 
     if not hasattr(config, "model_name"):
       raise ValueError(
-          "get_image_offsets for Qwen3-Omni requires a full config object with 'model_name' and "
-          "related settings; a bare model_name string is not supported."
+          "get_image_offsets requires a full config object (not a model-name string) for "
+          f"model '{model_name}' because it reads config attributes such as "
+          "'spatial_merge_size_for_vit'."
       )
     return get_mm_offsets_qwen3_omni(config, processor_output)
   else:

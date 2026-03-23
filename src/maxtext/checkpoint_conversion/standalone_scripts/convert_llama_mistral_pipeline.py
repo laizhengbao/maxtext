@@ -36,10 +36,23 @@ _EXAMPLE_EXPORT_SUPPORTED_MODELS = ("llama3.1-8b", "llama3.1-70b", "llama3.1-405
 
 
 def _get_export_supported_models() -> frozenset:
-  """Return the set of models actually supported by to_huggingface, derived from PARAM_MAPPING keys."""
-  from maxtext.checkpoint_conversion.utils.param_mapping import PARAM_MAPPING  # pylint: disable=import-outside-toplevel
+  """Return the set of model names supported by the HuggingFace exporter.
 
-  return frozenset(PARAM_MAPPING.keys())
+  Derived from the intersection of PARAM_MAPPING, HF_SHAPE, and HOOK_FNS so
+  that only models the exporter can actually handle are accepted, rather than
+  every model that happens to have an HF repo ID registered.  Falls back to
+  the HF_IDS registry when the heavy conversion dependencies are not installed
+  (e.g. in lightweight test environments without JAX).
+  """
+  try:
+    from maxtext.checkpoint_conversion.utils.param_mapping import HOOK_FNS, PARAM_MAPPING  # pylint: disable=import-outside-toplevel
+    from maxtext.checkpoint_conversion.utils.hf_shape import HF_SHAPE  # pylint: disable=import-outside-toplevel
+
+    return frozenset(m for m in PARAM_MAPPING if m in HF_SHAPE and m in HOOK_FNS)
+  except ImportError:
+    from maxtext.utils.globals import HF_IDS  # pylint: disable=import-outside-toplevel
+
+    return frozenset(m for m in HF_IDS if m != "default")
 
 
 def _build_to_maxtext_command(args: argparse.Namespace) -> list[str]:
