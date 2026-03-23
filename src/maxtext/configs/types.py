@@ -260,6 +260,8 @@ ModelName = Literal[
     "gpt-oss-120b",
     "llama4-17b-16e",
     "llama4-17b-128e",
+    "llama3.2-11b-vision",
+    "llama3.2-90b-vision",
     "olmo3-7b",
     "olmo3-7b-pt",
     "olmo3-32b",
@@ -1521,6 +1523,10 @@ class MultimodalGeneral(BaseModel):
   freeze_vision_encoder_params: bool = Field(True, description="Freeze the parameters of the vision encoder.")
   freeze_audio_encoder_params: bool = Field(True, description="Freeze the parameters of the audio encoder.")
   use_audio: bool = Field(False, description="Enable audio encoder for multimodal models.")
+  cross_attention_layers: list[int] = Field(
+      default_factory=list,
+      description="Decoder layer indices that should use multimodal cross-attention instead of self-attention.",
+  )
   image_size_for_vit: int = Field(896, description="Input image size for the Vision Transformer.")
   image_path: PathStr = Field("", description="Path to an image for decoding.")
   image_placeholder: str = Field("<|image|>", description="Placeholder string for images in text prompts.")
@@ -1550,12 +1556,14 @@ class VisionTower(BaseModel):
       description="Number of input channels for the Vision Transformer (e.g., 3 for RGB).",
   )
   tile_size_for_vit: int = Field(336, description="Tile size for the Vision Transformer.")
+  max_num_tiles_for_vit: int = Field(20, description="Maximum number of image tiles per image for tiled vision encoders.")
   patch_size_for_vit: int = Field(14, description="Patch size for the Vision Transformer.")
   conv_stride_for_vit: int = Field(
       14,
       description="Convolutional stride for the Vision Transformer's patch embedding.",
   )
   num_hidden_layers_for_vit: int = Field(34, description="Number of hidden layers in the Vision Transformer.")
+  num_global_layers_for_vit: int = Field(8, description="Number of global vision encoder layers.")
   rope_theta_for_vit: int = Field(10000, description="RoPE theta value for the Vision Transformer.")
   vision_output_dim_for_vit: int = Field(4096, description="Final output dimension of the vision-to-language projection.")
   spatial_merge_size_for_vit: int = Field(2, description="Spatial merge factor for vision patches.")
@@ -2454,6 +2462,8 @@ class MaxTextConfig(
           "gemma3-4b",
           "gemma3-12b",
           "gemma3-27b",
+          "llama3.2-11b-vision",
+          "llama3.2-90b-vision",
           "llama4-17b-16e",
           "llama4-17b-128e",
           "qwen3-omni-30b-a3b",
@@ -2465,6 +2475,8 @@ class MaxTextConfig(
           raise ValueError("For multimodal SFT, `sft_train_on_completion_only` must be True.")
         if self.packing:
           raise ValueError("For multimodal SFT, `packing` is not yet supported.")
+    if self.decoder_block == DecoderBlockType.MLLAMA and self.scan_layers:
+      raise ValueError("Mllama currently requires scan_layers=False because cross-attention layers are interleaved.")
     if self.shard_mode == ShardMode.EXPLICIT:
       supported_decoders = {"simple", "simple_mlp", "llama2", "deepseek"}
       if self.decoder_block.value not in supported_decoders:

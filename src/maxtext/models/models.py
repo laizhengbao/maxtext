@@ -25,7 +25,13 @@ from jax.sharding import Mesh
 from flax import linen as nn
 from flax import nnx
 
-from maxtext.common.common_types import Config, DECODING_ACTIVE_SEQUENCE_INDICATOR, MODEL_MODE_AUTOREGRESSIVE, MODEL_MODE_TRAIN
+from maxtext.common.common_types import (
+    Config,
+    DECODING_ACTIVE_SEQUENCE_INDICATOR,
+    DecoderBlockType,
+    MODEL_MODE_AUTOREGRESSIVE,
+    MODEL_MODE_TRAIN,
+)
 from maxtext.inference import page_manager
 from maxtext.layers.nnx_decoders import NNXDecoder
 from maxtext.layers import initializers
@@ -156,12 +162,16 @@ class TransformerLinenPure(nn.Module):
     image_embeddings = None
     audio_embeddings = None
     deepstack_visual_embeds = None
+    cross_attention_states = None
 
     if self.config.use_multimodal and encoder_images is not None:
       image_embeddings, deepstack_visual_embeds = self.vision_encoder(
           input_images=encoder_images, deterministic=not enable_dropout
       )
-      bidirectional_mask = mm_processor.get_bidirectional_mask_vision(self.config, decoder_input_tokens)
+      if self.config.decoder_block == DecoderBlockType.MLLAMA:
+        cross_attention_states = image_embeddings.reshape(image_embeddings.shape[0], -1, image_embeddings.shape[-1])
+      else:
+        bidirectional_mask = mm_processor.get_bidirectional_mask_vision(self.config, decoder_input_tokens)
 
     if self.config.use_multimodal and encoder_audios is not None and self.audio_encoder is not None:
       audio_embeddings = self.audio_encoder(input_audio=encoder_audios, deterministic=not enable_dropout)
@@ -184,6 +194,7 @@ class TransformerLinenPure(nn.Module):
         bidirectional_mask=bidirectional_mask,
         image_embeddings=image_embeddings,
         image_masks=encoder_image_masks,
+        cross_attention_states=cross_attention_states,
         audio_embeddings=audio_embeddings,
         audio_masks=audio_masks,
         kv_caches=kv_caches,
@@ -468,11 +479,15 @@ class Transformer(nnx.Module):
     bidirectional_mask = None
     image_embeddings = None
     deepstack_visual_embeds = None
+    cross_attention_states = None
     if self.config.use_multimodal and encoder_images is not None:
       image_embeddings, deepstack_visual_embeds = self.vision_encoder(
           input_images=encoder_images, deterministic=not enable_dropout
       )
-      bidirectional_mask = mm_processor.get_bidirectional_mask_vision(self.config, decoder_input_tokens)
+      if self.config.decoder_block == DecoderBlockType.MLLAMA:
+        cross_attention_states = image_embeddings.reshape(image_embeddings.shape[0], -1, image_embeddings.shape[-1])
+      else:
+        bidirectional_mask = mm_processor.get_bidirectional_mask_vision(self.config, decoder_input_tokens)
 
     audio_embeddings = None
     if self.config.use_multimodal and encoder_audios is not None and self.audio_encoder is not None:
@@ -503,6 +518,7 @@ class Transformer(nnx.Module):
           bidirectional_mask=bidirectional_mask,
           image_embeddings=image_embeddings,
           image_masks=encoder_image_masks,
+          cross_attention_states=cross_attention_states,
           audio_embeddings=audio_embeddings,
           audio_masks=audio_masks,
           kv_caches=kv_caches,
@@ -523,6 +539,7 @@ class Transformer(nnx.Module):
           bidirectional_mask=bidirectional_mask,
           image_embeddings=image_embeddings,
           image_masks=encoder_image_masks,
+          cross_attention_states=cross_attention_states,
           audio_embeddings=audio_embeddings,
           audio_masks=audio_masks,
           kv_caches=kv_caches,
