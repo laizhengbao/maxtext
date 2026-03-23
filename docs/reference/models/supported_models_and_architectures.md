@@ -24,8 +24,8 @@ MaxText is an open-source, high-performance LLM framework written in Python/JAX.
 
 ### Llama
 
-- **Variants**: Llama 2; **Llama 3 / 3.1 / 3.3**; Llama 4 (**Scout**, **Maverick**; text & multimodal)
-- **Notes**: RoPE, RMSNorm, SwiGLU; GQA; routed experts (Llama 4); **QK-Norm** (Llama 4); multimodal projector & vision encoder.
+- **Variants**: Llama 2; **Llama 3 / 3.1 / 3.2 Vision / 3.3**; Llama 4 (**Scout**, **Maverick**; text & multimodal)
+- **Notes**: RoPE, RMSNorm, SwiGLU; GQA; **cross-attention vision adapter** (Llama 3.2 Vision); routed experts (Llama 4); **QK-Norm** (Llama 4); multimodal projector & vision encoder.
 
 ### Mistral / Mixtral
 

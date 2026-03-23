@@ -42,7 +42,12 @@ class VisionEncoder(nnx.Module):
       setattr(self, encoder_name, gemma3.Gemma3VisionEncoderLayer(config=self.config, mesh=self.mesh, rngs=self.rngs))
       setattr(self, projector_name, gemma3.VisionEmbedder(config=self.config, mesh=self.mesh, rngs=self.rngs))
       return encoder_name, projector_name
-    elif self.config.model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
+    elif self.config.model_name in [
+        "llama3.2-11b-vision",
+        "llama3.2-90b-vision",
+        "llama4-17b-16e",
+        "llama4-17b-128e",
+    ]:
       from maxtext.models import llama4  # pylint: disable=import-outside-toplevel
 
       encoder_name = "Llama4VisionModel_0"

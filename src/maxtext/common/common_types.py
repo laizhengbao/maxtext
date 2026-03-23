@@ -100,6 +100,7 @@ class DecoderBlockType(enum.Enum):
   GPT_OSS = "gpt_oss"
   SIMPLE = "simple"
   SIMPLE_MLP = "simple_mlp"
+  MLLAMA = "mllama"
   LLAMA4 = "llama4"
   OLMO3 = "olmo3"
 
