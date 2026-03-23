@@ -479,6 +479,8 @@ def validate_model_name(s: str) -> bool:
       "gpt3-52k",
       "gpt-oss-20b",
       "gpt-oss-120b",
+      "llama3.2-11b-vision",
+      "llama3.2-90b-vision",
       "llama4-17b-16e",
       "llama4-17b-128e",
   )
@@ -491,6 +493,8 @@ def validate_multimodal_model_name(s: str) -> bool:
       "gemma3-4b",
       "gemma3-12b",
       "gemma3-27b",
+      "llama3.2-11b-vision",
+      "llama3.2-90b-vision",
       "llama4-17b-16e",
       "llama4-17b-128e",
   )

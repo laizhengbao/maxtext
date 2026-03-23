@@ -34,6 +34,11 @@ def preprocess_mm_data(config):
 
     images = [mm_utils.load_image_from_path(p) for p in config.image_path.split(",")]
     processor_outputs = preprocess_mm_data_gemma3(images)
+  elif config.model_name in ["llama3.2-11b-vision", "llama3.2-90b-vision"]:
+    from maxtext.multimodal.processor_mllama import preprocess_mm_data_mllama  # pylint: disable=import-outside-toplevel
+
+    images = [mm_utils.load_image_from_path(p) for p in config.image_path.split(",")]
+    processor_outputs = preprocess_mm_data_mllama(images)
   elif config.model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
     from maxtext.multimodal.processor_llama4 import preprocess_mm_data_llama4  # pylint: disable=import-outside-toplevel
 
@@ -55,6 +60,10 @@ def preprocess_image_for_training(image, model_name):
     from maxtext.multimodal.processor_gemma3 import preprocess_mm_data_gemma3  # pylint: disable=import-outside-toplevel
 
     return preprocess_mm_data_gemma3(image)
+  elif model_name in ["llama3.2-11b-vision", "llama3.2-90b-vision"]:
+    from maxtext.multimodal.processor_mllama import preprocess_mm_data_mllama  # pylint: disable=import-outside-toplevel
+
+    return preprocess_mm_data_mllama(image)
   elif model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
     from maxtext.multimodal.processor_llama4 import preprocess_mm_data_llama4  # pylint: disable=import-outside-toplevel
 
@@ -65,17 +74,24 @@ def preprocess_image_for_training(image, model_name):
 
 def get_image_offsets(config, processor_output: mm_utils.PreprocessorOutput | None):
   """Get the increase in total token count after inserting image token placeholders"""
-  if config.model_name in ["gemma3-4b", "gemma3-12b", "gemma3-27b"]:
+  model_name = config.model_name if hasattr(config, "model_name") else config
+  if model_name in ["gemma3-4b", "gemma3-12b", "gemma3-27b"]:
     from maxtext.multimodal.processor_gemma3 import get_image_offsets_gemma3  # pylint: disable=import-outside-toplevel
 
     return get_image_offsets_gemma3(processor_output)
-  elif config.model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
+  elif model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
     from maxtext.multimodal.processor_llama4 import get_image_offsets_llama4  # pylint: disable=import-outside-toplevel
 
     return get_image_offsets_llama4(processor_output)
-  elif config.model_name in ["qwen3-omni-30b-a3b"]:
+  elif model_name in ["qwen3-omni-30b-a3b"]:
     from maxtext.multimodal.processor_qwen3_omni import get_mm_offsets_qwen3_omni  # pylint: disable=import-outside-toplevel
 
+    if not hasattr(config, "model_name"):
+      raise ValueError(
+          "get_image_offsets requires a full config object (not a model-name string) for "
+          f"model '{model_name}' because it reads config attributes such as "
+          "'spatial_merge_size_for_vit'."
+      )
     return get_mm_offsets_qwen3_omni(config, processor_output)
   else:
     return 0
@@ -87,6 +103,10 @@ def reformat_prompt(prompt, image_placeholder, model_name, num_images, video_pla
     from maxtext.multimodal.processor_gemma3 import reformat_prompt_gemma3  # pylint: disable=import-outside-toplevel
 
     return reformat_prompt_gemma3(prompt, image_placeholder, num_images)
+  elif model_name in ["llama3.2-11b-vision", "llama3.2-90b-vision"]:
+    from maxtext.multimodal.processor_mllama import reformat_prompt_mllama  # pylint: disable=import-outside-toplevel
+
+    return reformat_prompt_mllama(prompt, image_placeholder, num_images)
   elif model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
     from maxtext.multimodal.processor_llama4 import reformat_prompt_llama4  # pylint: disable=import-outside-toplevel
 
@@ -110,6 +130,8 @@ def reformat_response(response, model_name):
   if model_name in ["llama4-17b-16e", "llama4-17b-128e"]:
     formatted_response = f"{response}<|eot|>"
     return formatted_response
+  elif model_name in ["llama3.2-11b-vision", "llama3.2-90b-vision"]:
+    return response
   elif model_name in ["gemma3-4b", "gemma3-12b", "gemma3-27b"]:
     formatted_response = f"{response}<end_of_turn>"
     return formatted_response
@@ -130,6 +152,8 @@ def prepare_text_for_image_fusion(tokens, config, processor_output=None):
     from maxtext.multimodal.processor_llama4 import add_extra_tokens_for_images_llama4  # pylint: disable=import-outside-toplevel
 
     return add_extra_tokens_for_images_llama4(tokens, processor_output)
+  elif config.model_name in ["llama3.2-11b-vision", "llama3.2-90b-vision"]:
+    return tokens
   elif config.model_name in ["qwen3-omni-30b-a3b"]:
     from maxtext.multimodal.processor_qwen3_omni import add_extra_tokens_for_qwen3_omni  # pylint: disable=import-outside-toplevel
 
@@ -145,6 +169,10 @@ def get_dummy_image_shape_for_init(model_name, batch_size=1, num_image_per_seque
     from maxtext.multimodal.processor_gemma3 import get_dummy_image_shape_for_init_gemma3  # pylint: disable=import-outside-toplevel
 
     image_shape = get_dummy_image_shape_for_init_gemma3(batch_size, num_image_per_sequence)
+  elif model_name.startswith("llama3.2"):
+    from maxtext.multimodal.processor_mllama import get_dummy_image_shape_for_init_mllama  # pylint: disable=import-outside-toplevel
+
+    image_shape = get_dummy_image_shape_for_init_mllama(batch_size, num_image_per_sequence)
   elif model_name.startswith("llama4"):
     from maxtext.multimodal.processor_llama4 import get_dummy_image_shape_for_init_llama4  # pylint: disable=import-outside-toplevel
 

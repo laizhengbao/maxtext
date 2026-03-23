@@ -94,6 +94,28 @@ python3 -m maxtext.checkpoint_conversion.to_maxtext \
 
 Above command will download the Hugging Face model to local machine if `hf_model_path` is unspecified, or reuse the checkpoint in `hf_model_path`. It will convert the checkpoint to the MaxText format and save it to `${MODEL_CHECKPOINT_DIRECTORY}/0/items`.
 
+## Meta/PyTorch checkpoint to MaxText, with optional Hugging Face export
+
+For the existing Meta-style `.pth` checkpoint flow used by Llama, Mistral, and Mixtral models, you can now use a single wrapper command to first generate a MaxText Orbax checkpoint and, when the generic exporter supports that model, optionally convert the result back into Hugging Face format.
+
+```bash
+python3 -m maxtext.checkpoint_conversion.standalone_scripts.convert_llama_mistral_pipeline \
+    --base-model-path=/tmp/meta-ckpt \
+    --maxtext-model-path=gs://my-bucket/llama3.1-8b/scanned_ckpt \
+    --model-size=llama3.1-8b \
+    --hf-model-path=/tmp/llama3.1-8b-hf \
+    --hf-access-token=${HF_TOKEN?}
+```
+
+**Key arguments:**
+
+- `--base-model-path`: Source Meta/PyTorch checkpoint directory.
+- `--maxtext-model-path`: Output directory for the intermediate MaxText Orbax checkpoint.
+- `--model-size`: Model key understood by `llama_or_mistral_ckpt`, such as `llama3.1-8b` or `mixtral-8x7b`.
+- `--hf-model-path` (optional): If set, chains the intermediate checkpoint into `maxtext.checkpoint_conversion.to_huggingface`. This currently works only for model sizes already supported by the generic exporter.
+- `--huggingface-checkpoint` (optional): Treat the source checkpoint as Hugging Face safetensors instead of Meta `.pth` shards.
+- `--scan-layers` (optional): Controls the scanned-layer flag passed to the chained MaxText $\to$ Hugging Face export. It defaults to `true` because the intermediate checkpoint produced by `llama_or_mistral_ckpt` is scanned.
+
 ## MaxText to Hugging Face
 
 Use the `to_huggingface.py` script to convert a MaxText checkpoint into the Hugging Face format. This is useful for sharing your models or integrating them with the Hugging Face ecosystem.

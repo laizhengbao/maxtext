@@ -48,6 +48,7 @@ from maxtext.models import (
     gpt3,
     gpt_oss,
     llama2,
+    mllama,
     llama4,
     mistral,
     mixtral,
@@ -448,6 +449,8 @@ class Decoder(nn.Module):
         return [DecoderLayer]
       case DecoderBlockType.LLAMA2:
         return [llama2.LlamaDecoderLayerToLinen]
+      case DecoderBlockType.MLLAMA:
+        return [mllama.MllamaDecoderLayerToLinen]
       case DecoderBlockType.MISTRAL:
         # TODO(ranran): update to Mistral with sliding window attention
         return [mistral.MistralDecoderLayerToLinen]
@@ -522,6 +525,7 @@ class Decoder(nn.Module):
     if self.config.decoder_block in (
         DecoderBlockType.DEFAULT,
         DecoderBlockType.LLAMA2,
+        DecoderBlockType.MLLAMA,
         DecoderBlockType.MISTRAL,
         DecoderBlockType.MIXTRAL,
         DecoderBlockType.DEEPSEEK,
@@ -620,6 +624,7 @@ class Decoder(nn.Module):
       image_embeddings=None,
       bidirectional_mask=None,
       image_masks=None,
+      cross_attention_states=None,
       audio_embeddings=None,
       audio_masks=None,
   ):
@@ -629,11 +634,13 @@ class Decoder(nn.Module):
     y = shared_embedding(decoder_input_tokens.astype("int32"), model_mode=model_mode)
 
     # Merge the image embeddings with the text embeddings for multimodal models
-    if image_embeddings is not None and cfg.use_multimodal:
+    if image_embeddings is not None and cfg.use_multimodal and cfg.decoder_block != DecoderBlockType.MLLAMA:
       if cfg.model_name in [
           "gemma3-4b",
           "gemma3-12b",
           "gemma3-27b",
+          "llama3.2-11b-vision",
+          "llama3.2-90b-vision",
           "llama4-17b-16e",
           "llama4-17b-128e",
           "qwen3-omni-30b-a3b",
@@ -759,6 +766,7 @@ class Decoder(nn.Module):
       bidirectional_mask: None | Any = None,
       image_embeddings: None | jnp.ndarray = None,
       image_masks: None | jnp.ndarray = None,
+      cross_attention_states: None | jnp.ndarray = None,
       kv_caches: list[jax.Array] | None = None,
       attention_metadata=None,
       audio_embeddings: None | jnp.ndarray = None,
@@ -779,6 +787,7 @@ class Decoder(nn.Module):
         image_embeddings,
         bidirectional_mask,
         image_masks,
+        cross_attention_states,
         audio_embeddings,
         audio_masks,
     )
@@ -1016,6 +1025,9 @@ class Decoder(nn.Module):
               # Gemma3 uses both global and sliding window attention depending on the layer index.
               layer_kwargs = {"attention_type": gemma3.get_attention_type(layer_id=lyr)}
               layer_call_kwargs = {"bidirectional_mask": bidirectional_mask}
+            if cfg.decoder_block == DecoderBlockType.MLLAMA:
+              layer_kwargs = {"use_cross_attention": lyr in set(self.config.cross_attention_layers)}
+              layer_call_kwargs = {"cross_attention_states": cross_attention_states}
             if cfg.decoder_block == DecoderBlockType.LLAMA4:
               layer_kwargs = {
                   "is_nope_layer": llama4.determine_is_nope_layer(lyr, self.config.nope_layer_interval),
